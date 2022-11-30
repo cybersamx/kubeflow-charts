@@ -1,0 +1,3 @@
+{{ if eq .Values.platform.cloud "azure" }}
+# Stub file for Azure specific modifications
+{{ end }}
