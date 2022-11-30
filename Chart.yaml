@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kubeflow-pipelines
+description: 'Kubeflow pipelines - adapted from GetInData helm charts. See https://github.com/getindata/helm-charts'
+type: application
+version: 0.1.0
+appVersion: 1.8.5

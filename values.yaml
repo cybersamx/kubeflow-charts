@@ -1,0 +1,59 @@
+platform:
+  # -- Configures the target cloud, possible: `aws`, `gcp`
+  cloud: gcp
+  managedStorage:
+    enabled: false
+    # -- Database name prefix for KFP
+    databaseNamePrefix: '{{ .Release.Name | replace "-" "_" | replace "." "_" }}'
+    # -- MySQL database host for KFP. For AWS, it should be a host of RDS. For GCP you need to leave it as mysql, as CloudSQL Proxy will be used.
+    dbHost: "mysql"
+    # -- MySQL database port
+    dbPort: 3306
+    # -- MySQL database user
+    dbUsername: 'root'
+    # -- MySQL database password
+    dbPassword: ''
+    # -- Bucket (or Container for Azure) name for KFP artifacts. Works for S3, GCP and Azure (only bucket/container name, do not put `s3://`, `gcs://` or `wasb://` prefixes here!)
+    bucketName: ~
+    # -- Internal keys for MinIO
+    minioAccessKey: minio
+    # -- Internal keys for MinIO
+    minioSecretKey: minio123
+  aws:
+    # -- Region of the bucket used in `platform.managedStorage.bucketName`
+    bucketRegion: "eu-central-1"
+  gcp:
+    # -- GCP Project ID
+    projectId: ""
+    # -- Fully qualified connection name to CloudSQL instance, e.g. my-gcp-project-id:europe-west1:my-sql-instance-name
+    cloudsqlInstanceConnectionName: ~
+    # -- Enable or disable proxy agent. Only disable for CI.
+    proxyEnabled: false
+  azure:
+    # -- Azure Storage Account Name
+    storageAccountName: ""
+    # -- Azure Storage Account Key
+    storageAccountKey: ""
+
+# -- Name of Argo executor (default is emissary). See https://argoproj.github.io/argo-workflows/workflow-executors/
+executor: "emissary"
+
+# -- Links to all images for KFP and related components. Ported from Kustomize manifests for Kubeflow Pipelines 1.8.5
+images:
+  apiserver: gcr.io/ml-pipeline/api-server:1.8.5
+  argoexecutor: gcr.io/ml-pipeline/argoexec:v3.1.14-license-compliance
+  argoworkflowcontroller: gcr.io/ml-pipeline/workflow-controller:v3.1.14-license-compliance
+  cloudsqlproxy: gcr.io/cloudsql-docker/gce-proxy:1.14
+  frontend: gcr.io/ml-pipeline/frontend:1.8.5
+  metadataserver: gcr.io/tfx-oss-public/ml_metadata_store_server:1.9.0
+  minio: minio/minio:RELEASE.2022-04-16T04-26-02Z
+  mysql: gcr.io/ml-pipeline/mysql:8.0
+  persistenceagent: gcr.io/ml-pipeline/persistenceagent:1.8.5
+  proxyagent: gcr.io/ml-pipeline/inverse-proxy-agent:1.8.5
+  scheduledworkflow: gcr.io/ml-pipeline/scheduledworkflow:1.8.5
+  viewercrd: gcr.io/ml-pipeline/viewer-crd-controller:1.8.5
+  visualizationserver: gcr.io/ml-pipeline/visualization-server:1.8.5
+  metadataenvoy: gcr.io/ml-pipeline/metadata-envoy:1.8.5
+  metadatawriter: gcr.io/ml-pipeline/metadata-writer:1.8.5
+  cacheserver: gcr.io/ml-pipeline/cache-server:1.8.5
+  cachedeployer: gcr.io/ml-pipeline/cache-deployer:1.8.5

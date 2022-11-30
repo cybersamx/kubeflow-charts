@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  labels:
+    app: minio
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  ports:
+    - port: 9000
+      protocol: TCP
+      targetPort: 9000
+  selector:
+    app: minio
+    app.kubernetes.io/name: {{ .Release.Name }}
+---
+{{ if .Values.platform.managedStorage.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  labels:
+    app: minio
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      app.kubernetes.io/name: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: minio
+        app.kubernetes.io/name: {{ .Release.Name }}
+    spec:
+      containers:
+        - args:
+            - gateway
+            {{- if eq .Values.platform.cloud "gcp" }}
+            - gcs
+            - $(PROJECT_ID)
+            {{- end }}
+            {{- if eq .Values.platform.cloud "aws" }}
+            - s3
+            - "https://s3.{{ required "Bucket region is required for AWS" .Values.platform.aws.bucketRegion }}.amazonaws.com"
+            {{- end }}
+            {{- if eq .Values.platform.cloud "azure" }}
+            - azure
+            {{- end }}
+            - "--console-address"
+            - ":9001"
+          env:
+            {{- if eq .Values.platform.cloud "gcp" }}
+            - name: PROJECT_ID
+              value: "{{ .Values.platform.gcp.projectId }}"
+            {{- end}}
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mlpipeline-minio-artifact
+                  key: accesskey
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mlpipeline-minio-artifact
+                  key: secretkey
+            # TODO - should work with IAM ootb, without explicit service accounts
+            # Minio is KFP system workload and we use GCE's default service account
+            # or later Workload Identity's corresponding service account.
+            # So here no need to setup GOOGLE_APPLICATION_CREDENTIALS.
+            # - name: GOOGLE_APPLICATION_CREDENTIALS
+            #  value: "/etc/credentials/application_default_credentials.json"
+          image: {{ .Values.images.minio }}
+          name: minio
+          ports:
+            - containerPort: 9000
+          resources:
+            requests:
+              cpu: 20m
+              memory: 100Mi
+{{ end }}
+---
+{{ if not .Values.platform.managedStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  labels:
+    app: minio
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      app.kubernetes.io/name: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: minio
+        app.kubernetes.io/name: {{ .Release.Name }}
+    spec:
+      containers:
+        - args:
+            - server
+            - /data
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlpipeline-minio-artifact
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlpipeline-minio-artifact
+                  key: secretkey
+          image: {{ .Values.images.minio }}
+          name: minio
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - mountPath: /data
+              name: data
+              subPath: minio
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minio-pvc
+{{ end }}
